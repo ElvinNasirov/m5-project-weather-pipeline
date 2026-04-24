@@ -8,16 +8,18 @@ Over the next two weeks you will build a complete, end-to-end **weather intellig
 
 **Why weather?** Weather data is publicly available, refreshed daily, has genuine quality challenges (sensor gaps, interpolation artefacts, seasonal non-stationarity), and is the backbone of decisions in energy, agriculture, logistics, and insurance. It is the perfect playground for asking *"Can we trust this data?"*
 
+## 🌍 Tourism Weather Risk & Activity Suitability Platform
 
-## 🧪 Team Project Plan (Day 1)
+### 📌 Project Overview
 
-### Problem Statement
-Can we predict which cities in Azerbaijan will have good weather conditions for tourism during May–June?
+This project provides data-driven weather insights to support tourism planning and decision-making. It helps travel agencies and tour operators evaluate the feasibility of outdoor activities based on both historical patterns and forecasted conditions.
 
-The model will classify each day as suitable or not suitable for travel, allowing users to compare cities and choose the best destination without manually checking forecasts.
+The main objectives are:
+- Minimize cancellation risks for tour operators  
+- Enhance customer satisfaction by recommending optimal dates for specific activities  
+- Provide AI-driven explanations for weather-based travel recommendations  
 
 ---
-
 ### Data Sources
 We use the Open-Meteo API:
 
@@ -33,54 +35,163 @@ Parameters:
 - daily weather variables
 
 ---
+### 👥 Team & Responsibilities
 
-### Cities / Locations
-- Baku, Azerbaijan (40.41, 49.87)
-- Lankaran, Azerbaijan (38.75, 48.85)
-- Gusar, Azerbaijan (41.42, 48.43)
-- Guba, Azerbaijan (41.36, 48.51)
-- Gabala, Azerbaijan (40.58, 47.50)
-- Shaki, Azerbaijan (41.11, 47.10)
-- Ganja, Azerbaijan (40.48, 46.21)
+- **Jala (Data Engineer):** Ingestion pipeline, DuckDB management, and automation  
+- **Roya (Team Manager & Data Quality):** Task coordination, data validation, and cleaning logic  
+- **Sema (Data Analyst):** Exploratory Data Analysis (EDA), statistical testing, and tourism insights  
+- **Elvin (ML Engineer):** Feature engineering, model training, and AI suitability logic  
 
 ---
 
-### Weather Variables
+### ⚙️ Technical Specifications
 
-| Variable Name              | Unit  | Why it is relevant |
-|---------------------------|------|-------------------|
-| temperature_2m_max        | °C   | Determines if daytime conditions are suitable for activities like sightseeing, walking tours, and beach visits; very high temperatures can cause discomfort and limit outdoor time |
-| temperature_2m_min        | °C   | Affects early morning and evening comfort, important for activities like dining outdoors, night walks, or early excursions |
-| precipitation_sum         | mm   | Rain directly disrupts outdoor plans such as sightseeing, hiking, and city exploration; even light rain can reduce travel enjoyment |
-| windspeed_10m_max         | m/s  | Strong winds can negatively affect activities like beach visits, boat trips, and outdoor dining; can also make walking uncomfortable |
-| relative_humidity_2m_mean | %    | High humidity increases perceived temperature and discomfort, affecting physical activities like walking, hiking, and general outdoor exploration |
-| shortwave_radiation_sum   | MJ/m²| Represents sunlight exposure; important for activities like sunbathing and photography, but excessive radiation can lead to overheating or sunburn |
+#### 1. Dataset History Length  
+We use **5+ years of historical daily weather data (2021 up to the most recent available date)** to capture long-term seasonal patterns and climate variability across Azerbaijan.
 
----
+#### 2. Dataset Granularity  
+The data is processed at a **daily granularity**, where each record represents a 24-hour summary of weather conditions for a specific city.
 
-### Methodology Outline
-
-Week 1:
-- Collect historical and forecast weather data
-- Store data in DuckDB
-- Clean and prepare dataset
-- Perform feature engineering
-
-Week 2:
-- Conduct exploratory data analysis
-- Perform statistical tests
-- Build classification model
-- Evaluate model performance
+#### 3. Prediction Horizon  
+The project targets **medium-range forecasting (up to 28 days)**, aligning with tourism planning and booking cycles.
 
 ---
 
-### Success Criteria
+## 🎯 Targets
 
-- Pipeline successfully collects and stores weather data
-- Clean and structured dataset
-- Meaningful visualizations and analysis
-- Model correctly classifies good vs bad travel days
-- Clear and interpretable results
+We use a **multi-output regression model** to predict key weather variables required for activity suitability decisions.
+
+- **temperature_2m_max**  
+  Predicts peak daily temperature, which is critical for outdoor comfort and heat-related constraints.
+
+- **precipitation_sum**  
+  Measures total daily rainfall, the most important factor for determining whether outdoor activities are feasible.
+
+- **wind_speed_10m_max**  
+  Captures maximum wind conditions, essential for safety-sensitive activities such as cable car and boating.
+
+- **relative_humidity_2m_mean**  
+  Represents average humidity, which affects perceived temperature and overall comfort.
+
+- **cloud_cover_mean**  
+  Indicates sky conditions and visibility, useful for assessing atmosphere (e.g., sunny vs gloomy) and fog likelihood.
+
+---
+
+## 🧠 Features
+
+### Core & Derived Weather Features
+
+- **apparent_temperature_max**  
+  Represents perceived temperature (“feels like”), providing additional context for human comfort.
+
+- **sunshine_duration**  
+  Reflects how sunny a day is, providing additional context for outdoor activity quality and user experience.
+
+- **city (encoded)**  
+  Captures location-specific climate patterns across regions (Baku, Lankaran, Guba, Gabala, Shaki).
+
+---
+
+### Calendar Features
+
+- **month**  
+  Helps the model capture seasonal patterns within the May–June period.
+
+- **day_of_month**  
+  Provides finer time progression within each month, allowing the model to learn gradual weather changes.
+
+---
+
+### Lag Features (Previous Day Signals)
+
+- **temperature_lag_1**  
+  Yesterday’s temperature, used to model short-term continuity in temperature trends.
+
+- **precipitation_lag_1**  
+  Previous day’s rainfall, helping capture ongoing rain patterns.
+
+- **wind_lag_1**  
+  Yesterday’s wind speed, useful for modeling wind persistence.
+
+- **humidity_lag_1**  
+  Previous day’s humidity, supporting short-term atmospheric continuity.
+
+---
+
+### Rolling Features (Short-Term Trends)
+
+- **temperature_3d_avg**  
+  3-day average temperature, capturing recent warming or cooling trends.
+
+- **precipitation_7d_sum**  
+  Total rainfall over the past 7 days, indicating prolonged wet conditions.
+
+- **wind_3d_avg**  
+  3-day average wind speed, smoothing short-term fluctuations.
+
+- **humidity_7d_avg**  
+  7-day average humidity, reflecting persistent atmospheric conditions.
+
+---
+## 🧾 Feature Definitions
+
+| Source      | Feature Name               | Unit | Description                  |
+|------------|----------------------------|------|------------------------------|
+| Open-Meteo | apparent_temperature_max   | °C   | perceived temperature        |
+| Open-Meteo | sunshine_duration          | sec  | total daily sunlight         |
+| Derived    | city (encoded)             | —    | location identifier          |
+| Derived    | month                      | —    | month of observation         |
+| Derived    | day_of_month               | —    | day within month             |
+| Derived    | temperature_lag_1          | °C   | previous day temperature     |
+| Derived    | precipitation_lag_1        | mm   | previous day rainfall        |
+| Derived    | wind_lag_1                 | m/s  | previous day wind            |
+| Derived    | humidity_lag_1             | %    | previous day humidity        |
+| Derived    | temperature_3d_avg         | °C   | 3-day rolling avg temp       |
+| Derived    | precipitation_7d_sum       | mm   | 7-day rainfall sum           |
+| Derived    | wind_3d_avg                | m/s  | 3-day rolling avg wind       |
+| Derived    | humidity_7d_avg            | %    | 7-day rolling avg humidity   |
+
+---
+## ⚙️ Model Approach
+
+We use historical data for model training and evaluation, applying a time-based split to ensure realistic performance assessment.
+
+Additionally, we integrate **7-day forecast data from the API** for short-term activity suitability decisions.
+
+For medium-range predictions, we use a **multi-output regression model (Random Forest Regressor)** to predict all target variables simultaneously.
+
+This approach allows us to:
+- maintain a clean and unified forecasting pipeline  
+- capture relationships between multiple weather variables  
+- generate consistent inputs for downstream activity suitability decisions  
+
+---
+
+## 🔄 System Flow
+
+Historical Weather Data (Open-Meteo API)
++
+7-Day Forecast Data (API)
+↓
+Data Cleaning & Validation
+↓
+Feature Engineering
+(lag features, rolling averages, calendar features)
+↓
+Multi-output Regression Model
+(Random Forest Regressor)
+↓
+Predicted Weather Variables
+(temperature, precipitation, wind, humidity, cloud cover)
+↓
+AI Agent (Activity Suitability Layer)
+↓
+Final Output:
+
+* Activity suitability (Suitable / Risky / Not Suitable)
+* Natural language explanation
+
 
 ## Project Requirements
 
