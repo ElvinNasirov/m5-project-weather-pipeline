@@ -164,111 +164,87 @@ This approach allows us to:
 
 ---
 
-## System Flow
+## ⚙️ System Flow
 
-Historical Weather Data (Open-Meteo API)
-+
-7-Day Forecast Data (API)
-↓
-Data Cleaning & Validation
-↓
-Feature Engineering
-(lag features, rolling averages, calendar features)
-↓
-Multi-output Regression Model
-(Random Forest Regressor)
-↓
-Predicted Weather Variables
-(temperature, precipitation, wind, humidity, cloud cover)
-↓
-AI Agent (Activity Suitability Layer)
-↓
-Final Output:
+**1. Data Sources**
+- Historical Weather Data (Open-Meteo API)
+- 7-Day Forecast Data (Open-Meteo API)
 
-* Activity suitability (Suitable / Risky / Not Suitable)
-* Natural language explanation
+**2. Data Processing**
+- Data Cleaning & Validation
+- Feature Engineering  
+  - Lag features  
+  - Rolling averages  
+  - Calendar features  
 
-## Timeline
+**3. Modeling**
+- Multi-output Regression Model (Random Forest Regressor)
 
-Each day has a brief in the [`daily-briefs/`](daily-briefs/) folder with detailed tasks, deliverables, and resources. Submit a Pull Request at the end of each day showing your incremental progress.
+**4. Predictions**
+- Predicted Weather Variables:
+  - Temperature  
+  - Precipitation  
+  - Wind Speed  
+  - Humidity  
+  - Cloud Cover  
 
-| Day | Date | Brief | Focus |
-|-----|------|-------|-------|
-| 1 | 20 Apr | [Project Kick-Off & API Exploration](daily-briefs/day-01-project-kickoff.md) | Repo setup, API exploration, city/variable selection, project plan |
-| 2 | 21 Apr | [Data Ingestion Pipeline](daily-briefs/day-02-data-ingestion.md) | Ingestion module, config, full historical fetch, data audit |
-| 3 | 22 Apr | [Database Design & Data Loading](daily-briefs/day-03-database-design.md) | DuckDB schema, loading functions, validation queries |
-| 4 | 23 Apr | [Data Cleaning & Feature Engineering](daily-briefs/day-04-data-cleaning.md) | Quality assessment, cleaning pipeline, feature engineering, quality report |
-| 5 | 24 Apr | [Pipeline Automation & Data Quality](daily-briefs/day-05-pipeline-automation.md) | Orchestrator, incremental loading, quality gates, logging |
-| 6 | 27 Apr | [Exploratory Data Analysis](daily-briefs/day-06-eda.md) | Descriptive stats, distributions, time series, cross-city comparison |
-| 7 | 28 Apr | [Statistical Analysis & Feature Selection](daily-briefs/day-07-statistical-analysis.md) | Hypothesis testing, correlation, feature selection |
-| 8 | 29 Apr | [Predictive Modeling & Evaluation](daily-briefs/day-08-predictive-modeling.md) | 2+ models, train/test, confidence intervals, residual diagnostics |
-| — | 30 Apr | [Final Presentation](daily-briefs/day-09-final-presentation.md) | 10 min presentation, live demo, project submission |
+**5. AI Agent Layer**
+- Activity suitability decision system
+
+**6. Final Output**
+- Activity suitability (Suitable / Risky / Not Suitable)
+- Natural language explanation
+
+
+## 📅 Project Timeline
+
+| Date | Daily Activities |
+|------|------------------|
+| 20 Apr | Project setup, repository creation, explored Open-Meteo API, selected cities and weather variables |
+| 21 Apr | Built ingestion module, fetched 5+ years of historical data and 7-day forecast, saved raw data as parquet |
+| 22 Apr | Set up DuckDB database, created schemas, loaded raw data into database |
+| 23 Apr | Performed data cleaning, checked missing values and data consistency |
+| 24 Apr | Worked on data quality checks and initial feature engineering (lags, basic flags, date features) |
+| 25 Apr | Prepared model-ready dataset and stored it in DuckDB; initial website development started |
+| 26 Apr | Started exploratory data analysis (EDA), analyzed distributions and trends for May–June |
 
 ## Repository Structure
 
 ```
 m5-project-weather-pipeline/
-├── README.md               # This file — project overview
-├── requirements.txt        # Python dependencies
+├── README.md
+├── requirements.txt
 ├── .gitignore
-├── daily-briefs/           # Day-by-day task briefs (read-only reference)
-│   ├── day-01-project-kickoff.md
-│   ├── ...
-│   └── day-09-final-presentation.md
-├── src/                    # Pipeline code
-│   ├── __init__.py
-│   ├── ingestion.py        # Day 2
-│   ├── config.py           # Day 2
-│   ├── database.py         # Day 3
-│   ├── cleaning.py         # Day 4
-│   ├── features.py         # Day 4
-│   ├── quality_checks.py   # Day 5
-│   └── pipeline.py         # Day 5
-├── notebooks/              # Daily Jupyter notebooks
-│   ├── day_01_exploration.ipynb
-│   ├── day_02_ingestion.ipynb
-│   ├── ...
-│   └── day_08_modeling.ipynb
+
+├── src/
+│   ├── init.py
+│   ├── config.py
+│   ├── ingestion.py
+│   ├── db.py      ← DuckDB connection & queries
+│   ├── cleaning.py
+│   ├── features.py
+│   ├── quality_checks.py
+│   └── pipeline.py
+
+├── notebooks/
+│   ├── 01_data_ingestion.ipynb
+│   ├── 02_data_quality_checks.ipynb
+│   ├── 03_eda_and_trends.ipynb
+│   └── 04_modeling.ipynb
+
 ├── data/
-│   └── raw/                # Raw API data (gitignored)
+│   ├── weather.duckdb    ←  MAIN DATABASE
+│   └── raw/
+│       ├── historical/
+│       └── forecast/
+
 ├── reports/
-│   ├── figures/            # Saved visualisations
-│   └── data_quality_report.md
-└── logs/                   # Pipeline logs (gitignored)
+│   ├── figures/
+│   └── final_report.md
+
+└── logs/
 ```
 
-## Open-Meteo API Reference
 
-**Historical weather endpoint:**
 
-```
-https://archive-api.open-meteo.com/v1/archive?latitude=40.41&longitude=49.87&start_date=2020-01-01&end_date=2024-12-31&daily=temperature_2m_max,temperature_2m_min,precipitation_sum,windspeed_10m_max
-```
 
-**Forecast endpoint:**
-
-```
-https://api.open-meteo.com/v1/forecast?latitude=40.41&longitude=49.87&daily=temperature_2m_max,temperature_2m_min,precipitation_sum,windspeed_10m_max
-```
-
-Key daily variables: `temperature_2m_max`, `temperature_2m_min`, `temperature_2m_mean`, `precipitation_sum`, `rain_sum`, `snowfall_sum`, `windspeed_10m_max`, `relative_humidity_2m_mean`, `apparent_temperature_max`, `weathercode`.
-
-## Evaluation Criteria
-
-| Criterion | Weight | Description |
-|-----------|--------|-------------|
-| Pipeline completeness | 20% | End-to-end from API to database, automated, with quality checks |
-| Data quality analysis | 15% | Thorough assessment, documented issues, justified decisions |
-| Statistical rigour | 20% | Proper hypothesis testing, assumption checking, effect sizes |
-| Prediction model | 20% | Appropriate model selection, evaluation, confidence intervals |
-| Presentation quality | 15% | Clear narrative, good visuals, effective demo |
-| Code quality | 10% | Clean, modular, documented, reproducible |
-
-## Resources
-
-- [Open-Meteo API Documentation](https://open-meteo.com/en/docs)
-- [Open-Meteo Historical Weather API](https://open-meteo.com/en/docs/historical-weather-api)
-- [DuckDB Python Documentation](https://duckdb.org/docs/api/python/overview)
-- [scipy.stats documentation](https://docs.scipy.org/doc/scipy/reference/stats.html)
-- [statsmodels documentation](https://www.statsmodels.org/stable/index.html)
-- [Seaborn gallery](https://seaborn.pydata.org/examples/index.html)
