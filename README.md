@@ -130,23 +130,23 @@ We use a **multi-output regression model** to predict key weather variables requ
   7-day average humidity, reflecting persistent atmospheric conditions.
 
 ---
-## 🧾 Feature Definitions
+## 🧠 Feature Table
 
-| Source      | Feature Name               | Unit | Description                  |
-|------------|----------------------------|------|------------------------------|
-| Open-Meteo | apparent_temperature_max   | °C   | perceived temperature        |
-| Open-Meteo | sunshine_duration          | sec  | total daily sunlight         |
-| Derived    | city (encoded)             | —    | location identifier          |
-| Derived    | month                      | —    | month of observation         |
-| Derived    | day_of_month               | —    | day within month             |
-| Derived    | temperature_lag_1          | °C   | previous day temperature     |
-| Derived    | precipitation_lag_1        | mm   | previous day rainfall        |
-| Derived    | wind_lag_1                 | m/s  | previous day wind            |
-| Derived    | humidity_lag_1             | %    | previous day humidity        |
-| Derived    | temperature_3d_avg         | °C   | 3-day rolling avg temp       |
-| Derived    | precipitation_7d_sum       | mm   | 7-day rainfall sum           |
-| Derived    | wind_3d_avg                | m/s  | 3-day rolling avg wind       |
-| Derived    | humidity_7d_avg            | %    | 7-day rolling avg humidity   |
+| Source | Feature Name | Unit | Aggregation |
+|--------|-------------|------|-------------|
+| Open-Meteo | apparent_temperature_max | °C | daily max |
+| Open-Meteo | sunshine_duration | sec | daily sum |
+| Derived | city_encoded | — | categorical encoding |
+| Derived | month | — | extracted from date |
+| Derived | day_of_month | — | extracted from date |
+| Derived | temperature_2m_max_lag_1 | °C | 1-day lag |
+| Derived | precipitation_sum_lag_1 | mm | 1-day lag |
+| Derived | wind_speed_10m_max_lag_1 | m/s | 1-day lag |
+| Derived | relative_humidity_2m_mean_lag_1 | % | 1-day lag |
+| Derived | temperature_2m_max_3d_avg | °C | 3-day rolling mean |
+| Derived | precipitation_sum_7d_sum | mm | 7-day rolling sum |
+| Derived | wind_speed_10m_max_3d_avg | m/s | 3-day rolling mean |
+| Derived | relative_humidity_2m_mean_7d_avg | % | 7-day rolling mean |
 
 ---
 ## Model Approach
@@ -207,6 +207,10 @@ This approach allows us to:
 | 24 Apr | Worked on data quality checks and initial feature engineering (lags, basic flags, date features) |
 | 25 Apr | Prepared model-ready dataset and stored it in DuckDB; initial website development started |
 | 26 Apr | Started exploratory data analysis (EDA), analyzed distributions and trends for May–June |
+| 27 Apr | Started model development and initial training; began website development (in progress) |
+| 28 Apr | Continued model work and started pipeline development (pipeline orchestration in progress) |
+| 29 Apr | Planned: model improvement and evaluation; continue website development |
+| 30 Apr | Planned: final integration, presentation preparation, and project submission |
 
 ## Repository Structure
 
