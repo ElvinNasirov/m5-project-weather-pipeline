@@ -207,6 +207,10 @@ This approach allows us to:
 | 24 Apr | Worked on data quality checks and initial feature engineering (lags, basic flags, date features) |
 | 25 Apr | Prepared model-ready dataset and stored it in DuckDB; initial website development started |
 | 26 Apr | Started exploratory data analysis (EDA), analyzed distributions and trends for May–June |
+| 27 Apr | Started model development and initial training; began website development (in progress) |
+| 28 Apr | Continued model work and started pipeline development (pipeline orchestration in progress) |
+| 29 Apr | Planned: model improvement and evaluation; continue website development |
+| 30 Apr | Planned: final integration, presentation preparation, and project submission |
 
 ## Repository Structure
 
