@@ -24,6 +24,7 @@ xgboost
 
 # Notebook
 notebook
+ipykernel
 
 # Date utilities
 python-dateutil
