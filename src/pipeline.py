@@ -12,9 +12,7 @@ This pipeline:
 6. Saves outputs into DuckDB
 """
 
-# ------------------------
 # Imports
-# ------------------------
 
 from pathlib import Path
 
@@ -50,9 +48,7 @@ from src.quality_checks import (
     check_missing_values,
     check_duplicate_rows,
     check_duplicate_city_dates,
-    check_date_coverage,
     check_missing_dates,
-    check_column_consistency,
     check_weather_ranges,
 )
 
@@ -64,9 +60,7 @@ from src.features import (
     get_target_columns,
 )
 
-# ------------------------
 # Project paths
-# ------------------------
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 
@@ -74,9 +68,7 @@ RAW_DATA_DIR = PROJECT_ROOT / DATA_DIR
 RAW_HISTORICAL_DIR = RAW_DATA_DIR / HISTORICAL_SUBDIR
 RAW_FORECAST_DIR = RAW_DATA_DIR / FORECAST_SUBDIR
 
-# ------------------------
 # General DuckDB helper
-# ------------------------
 
 def store_dataframe(
     df: pd.DataFrame,
@@ -104,62 +96,38 @@ def run_clean_data_quality_gate(clean_df: pd.DataFrame) -> None:
     """
     print("Running quality gate on cleaned historical data...")
 
-    failures = []
-
     clean_df = clean_df.copy()
     clean_df["time"] = pd.to_datetime(clean_df["time"])
 
-    missing_values = check_missing_values(clean_df)
-    duplicate_rows = check_duplicate_rows(clean_df)
-    duplicate_city_dates = check_duplicate_city_dates(clean_df)
-    missing_dates = check_missing_dates(clean_df)
-    weather_range_violations = check_weather_ranges(clean_df)
+    checks = [
+        check_missing_values(clean_df),
+        check_duplicate_rows(clean_df),
+        check_duplicate_city_dates(clean_df),
+        check_missing_dates(clean_df),
+        check_weather_ranges(clean_df),
+    ]
 
-    if missing_values.sum() > 0:
-        failures.append(
-            "Missing values found after cleaning:\n"
-            f"{missing_values[missing_values > 0]}"
+    failed_checks = [
+        check for check in checks
+        if check["status"] in ["WARN", "FAIL"]
+    ]
+
+    if failed_checks:
+        messages = []
+
+        for check in failed_checks:
+            messages.append(
+                f"{check['check']} — {check['status']}\n"
+                f"Details: {check['details']}"
+            )
+
+        raise ValueError(
+            "Quality gate failed:\n\n" + "\n\n".join(messages)
         )
-
-    if duplicate_rows > 0:
-        failures.append(f"Duplicate rows found after cleaning: {duplicate_rows}")
-
-    if duplicate_city_dates > 0:
-        failures.append(
-            f"Duplicate city-date records found after cleaning: {duplicate_city_dates}"
-        )
-
-    cities_with_missing_dates = {
-        city: count
-        for city, count in missing_dates.items()
-        if count > 0
-    }
-
-    if cities_with_missing_dates:
-        failures.append(
-            f"Missing dates found after cleaning: {cities_with_missing_dates}"
-        )
-
-    bad_ranges = {
-        col: count
-        for col, count in weather_range_violations.items()
-        if count > 0
-    }
-
-    if bad_ranges:
-        failures.append(
-            f"Weather range violations found after cleaning: {bad_ranges}"
-        )
-
-    if failures:
-        failure_message = "\n\n".join(failures)
-        raise ValueError(f"Quality gate failed:\n\n{failure_message}")
 
     print("Quality gate passed.")
 
-# ------------------------
 # Feature preparation
-# ------------------------
 
 def clear_raw_parquet_files() -> None:
     """
@@ -177,7 +145,6 @@ def clear_raw_parquet_files() -> None:
         file.unlink()
 
     print("Old raw parquet files removed.")
-
 
 def save_city_frames_to_parquet(
     data_by_city: dict[str, pd.DataFrame],
@@ -284,7 +251,6 @@ def add_target_calendar_features(df: pd.DataFrame) -> pd.DataFrame:
 
     return df
 
-
 def make_supervised(df: pd.DataFrame, horizon: int) -> pd.DataFrame:
     """
     Create supervised dataset for a forecast horizon.
@@ -305,10 +271,11 @@ def make_supervised(df: pd.DataFrame, horizon: int) -> pd.DataFrame:
 
     return out
 
-
 def get_horizon_feature_columns() -> list[str]:
     """
-    Base model features plus target-date calendar features.
+    Return feature columns used for horizon-aware forecasting.
+
+    These include base engineered features plus target-date calendar features.
     """
     return get_feature_columns() + [
         "target_month",
@@ -318,10 +285,7 @@ def get_horizon_feature_columns() -> list[str]:
         "target_day_cos",
     ]
 
-
-# ------------------------
 # Model training
-# ------------------------
 
 def train_final_model(
     feature_df: pd.DataFrame,
@@ -349,10 +313,7 @@ def train_final_model(
 
     return model
 
-
-# ------------------------
 # Forecast preparation
-# ------------------------
 
 def prepare_api_forecast_output() -> pd.DataFrame:
     """
@@ -385,7 +346,6 @@ def prepare_api_forecast_output() -> pd.DataFrame:
     ] + get_target_columns()
 
     return forecast_df[output_cols]
-
 
 def prepare_latest_origin() -> pd.DataFrame:
     """
@@ -423,7 +383,6 @@ def prepare_latest_origin() -> pd.DataFrame:
     )
 
     return latest_origin
-
 
 def predict_ml_days_8_to_28(
     model: MultiOutputRegressor,
@@ -472,7 +431,6 @@ def predict_ml_days_8_to_28(
 
     return pd.DataFrame(rows)
 
-
 def build_final_28d_forecast(
     feature_df: pd.DataFrame,
 ) -> pd.DataFrame:
@@ -510,10 +468,7 @@ def build_final_28d_forecast(
 
     return final_forecast
 
-
-# ------------------------
 # Main pipeline
-# ------------------------
 
 def run_pipeline(refresh_data: bool = True) -> dict[str, pd.DataFrame]:
     """
@@ -532,28 +487,25 @@ def run_pipeline(refresh_data: bool = True) -> dict[str, pd.DataFrame]:
     dict
         Dictionary with model_features and final_28d_forecast DataFrames.
     """
-    print("Step 1/7 — Creating schemas...")
+    print("Step 1/6 — Creating schemas...")
     create_schemas()
 
     if refresh_data:
-        print("Step 2/7 — Refreshing raw API data...")
+        print("Step 2/6 — Refreshing raw API data...")
         refresh_raw_data()
     else:
-        print("Step 2/7 — Reusing existing raw parquet files...")
+        print("Step 2/6 — Reusing existing raw parquet files...")
 
-    print("Step 3/7 — Loading raw parquet files into DuckDB...")
+    print("Step 3/6 — Loading raw parquet files into DuckDB...")
     load_raw_data()
 
-    print("Step 4/7 — Running data quality gate...")
-    run_quality_gate()
-
-    print("Step 5/7 — Cleaning data and building model features...")
+    print("Step 4/6 — Cleaning data, running quality checks, and building model features...")
     feature_df = prepare_model_features()
 
-    print("Step 6/7 — Training model and building final 28-day forecast...")
+    print("Step 5/6 — Training model and building final 28-day forecast...")
     final_forecast = build_final_28d_forecast(feature_df)
 
-    print("Step 7/7 — Pipeline completed.")
+    print("Step 6/6 — Pipeline completed.")
     print(f"Model feature rows: {len(feature_df)}")
     print(f"Final forecast rows: {len(final_forecast)}")
 
@@ -561,7 +513,6 @@ def run_pipeline(refresh_data: bool = True) -> dict[str, pd.DataFrame]:
         "model_features": feature_df,
         "final_28d_forecast": final_forecast,
     }
-
 
 if __name__ == "__main__":
     run_pipeline(refresh_data=True)
