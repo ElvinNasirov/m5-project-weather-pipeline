@@ -1,16 +1,13 @@
 import pandas as pd
 from datetime import datetime
 
-
 def ensure_datetime(df, date_col="time"):
     df = df.copy()
     df[date_col] = pd.to_datetime(df[date_col], errors="coerce")
     return df
 
-
-# -------------------------
 # Row Count
-# -------------------------
+
 def check_row_count(df):
     return {
         "check": "row_count",
@@ -18,26 +15,19 @@ def check_row_count(df):
         "details": f"{len(df)} rows"
     }
 
-
-# -------------------------
 # Missing Values
-# -------------------------
+
 def check_missing_values(df):
     nulls = df.isna().sum()
-    ratio = df.isna().mean()
-
-    issues = ratio[ratio > 0.05]
 
     return {
         "check": "missing_values",
-        "status": "WARN" if len(issues) > 0 else "PASS",
-        "details": nulls.to_dict()
+        "status": "WARN" if nulls.sum() > 0 else "PASS",
+        "details": nulls.to_dict(),
     }
 
-
-# -------------------------
 # Duplicate Rows
-# -------------------------
+
 def check_duplicate_rows(df):
     count = df.duplicated().sum()
 
@@ -47,10 +37,8 @@ def check_duplicate_rows(df):
         "details": f"{count} duplicates"
     }
 
-
-# -------------------------
 # Duplicate City-Date
-# -------------------------
+
 def check_duplicate_city_dates(df):
     df = ensure_datetime(df)
     count = df.duplicated(subset=["city", "time"]).sum()
@@ -61,10 +49,8 @@ def check_duplicate_city_dates(df):
         "details": f"{count} duplicates"
     }
 
-
-# -------------------------
 # Date Coverage
-# -------------------------
+
 def check_date_coverage(df):
     df = ensure_datetime(df)
 
@@ -76,10 +62,8 @@ def check_date_coverage(df):
         "details": coverage.to_dict()
     }
 
-
-# -------------------------
 # Missing Dates
-# -------------------------
+
 def check_missing_dates(df):
     df = ensure_datetime(df)
     results = {}
@@ -95,10 +79,8 @@ def check_missing_dates(df):
         "details": results
     }
 
-
-# -------------------------
 # Column Consistency
-# -------------------------
+
 def check_column_consistency(df1, df2):
     result = {
         "same_columns": set(df1.columns) == set(df2.columns),
@@ -112,17 +94,17 @@ def check_column_consistency(df1, df2):
         "details": result
     }
 
-
-# -------------------------
 # Weather Ranges
-# -------------------------
+
 def check_weather_ranges(df):
     ranges = {
-        "temperature_2m_max": (-50, 60),
-        "precipitation_sum": (0, 500),
-        "windspeed_10m_max": (0, 80),  # FIXED name
-        "relative_humidity_2m_mean": (0, 100),
-        "apparent_temperature_max": (-50, 70),
+    "temperature_2m_max": (-50, 60),
+    "precipitation_sum": (0, 500),
+    "wind_speed_10m_max": (0, 80),
+    "relative_humidity_2m_mean": (0, 100),
+    "cloud_cover_mean": (0, 100),
+    "apparent_temperature_max": (-50, 70),
+    "sunshine_duration": (0, 86400),
     }
 
     results = {}
@@ -135,13 +117,11 @@ def check_weather_ranges(df):
     return {
         "check": "weather_ranges",
         "status": "WARN" if any(v > 0 for v in results.values()) else "PASS",
-        "details": results
+        "details": results,
     }
 
-
-# -------------------------
 # Freshness
-# -------------------------
+
 def check_freshness(df):
     df = ensure_datetime(df)
 

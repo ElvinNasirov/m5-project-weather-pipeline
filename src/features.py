@@ -1,6 +1,6 @@
+import numpy as np
 import pandas as pd
 from sklearn.preprocessing import LabelEncoder
-
 
 def add_calendar_features(df: pd.DataFrame) -> pd.DataFrame:
     """
@@ -30,7 +30,15 @@ def add_comfort_features(df: pd.DataFrame) -> pd.DataFrame:
 
     return df
 
+def add_risk_flags(df: pd.DataFrame) -> pd.DataFrame:
+    """
+    Add simple weather risk flags used for rolling risk features.
+    """
+    df = df.copy()
 
+    df["rain_flag"] = (df["precipitation_sum"] > 1).astype(int)
+
+    return df
 
 def add_lag_features(df: pd.DataFrame) -> pd.DataFrame:
     """
@@ -55,7 +63,6 @@ def add_lag_features(df: pd.DataFrame) -> pd.DataFrame:
     df["humidity_lag_3"] = df.groupby("city")["relative_humidity_2m_mean"].shift(3)
 
     return df
-
 
 def add_rolling_features(df: pd.DataFrame) -> pd.DataFrame:
     """
@@ -151,7 +158,6 @@ def add_city_encoding(df: pd.DataFrame):
     df["city_encoded"] = le.fit_transform(df["city"])
     return df, le
 
-
 def build_features(df: pd.DataFrame):
     """
     Full feature engineering pipeline.
@@ -159,6 +165,7 @@ def build_features(df: pd.DataFrame):
     df = df.copy()
     df = add_calendar_features(df)
     df = add_comfort_features(df)
+    df = add_risk_flags(df)
     df = add_lag_features(df)
     df = add_rolling_features(df)
     df = add_trend_features(df)
@@ -168,7 +175,6 @@ def build_features(df: pd.DataFrame):
     df = df.dropna().reset_index(drop=True)
 
     return df, le
-
 
 def get_feature_columns():
     return [
@@ -208,7 +214,6 @@ def get_feature_columns():
         "wind_trend_1d",
         "precipitation_trend_1d",
     ]
-
 
 def get_target_columns():
     """
