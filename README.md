@@ -143,7 +143,7 @@ We use a **multi-output regression model** to predict key weather variables requ
 | Derived | day_of_month | — | extracted from date |
 | Derived | temperature_2m_max_lag_1 | °C | 1-day lag |
 | Derived | precipitation_sum_lag_1 | mm | 1-day lag |
-| Derived | wind_speed_10m_max_lag_1 | m/s | 1-day lag |
+| Derived | wind_speed_10m_max_lag_1 | km/h | 1-day lag |
 | Derived | relative_humidity_2m_mean_lag_1 | % | 1-day lag |
 | Derived | temperature_2m_max_3d_avg | °C | 3-day rolling mean |
 | Derived | precipitation_sum_7d_sum | mm | 7-day rolling sum |
