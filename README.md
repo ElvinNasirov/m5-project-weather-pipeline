@@ -31,12 +31,13 @@ Parameters:
 - daily weather variables
 
 ---
-### Team & Responsibilities
 
-- **Jala (Data Engineer):** Ingestion pipeline, DuckDB management, and automation  
-- **Roya (Team Manager & Data Quality):** Task coordination, data validation, and cleaning logic  
-- **Sema (Data Analyst):** Exploratory Data Analysis (EDA), statistical testing, and tourism insights  
-- **Elvin (ML Engineer):** Feature engineering, model training, and AI suitability logic  
+### 👥 Team & Responsibilities
+
+- **Elvin:** Machine Learning & Pipeline  
+- **Roya:** Data Quality & Preprocessing, Statistical Analysis & Hypothesis Testing  
+- **Sama:** Data Quality support, Activity Recommendation Logic 
+- **Jala:** Web Interface & Presentation  
 
 ---
 
