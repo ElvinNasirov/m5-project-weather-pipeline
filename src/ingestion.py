@@ -10,10 +10,8 @@ from src.config import (
     FORECAST_DAYS,
 )
 
-
-# -------------------------------
 # Request with retry + rate limit handling
-# -------------------------------
+
 def make_request(url, params, city_name, max_retries=5):
     for attempt in range(max_retries):
         try:
@@ -36,10 +34,8 @@ def make_request(url, params, city_name, max_retries=5):
 
     raise Exception(f"[{city_name}] API request failed after {max_retries} retries")
 
-
-# -------------------------------
 # Fetch Historical Data
-# -------------------------------
+
 def fetch_historical(city_name, latitude, longitude, start_date, end_date, variables):
     if start_date >= end_date:
         raise ValueError("start_date must be before end_date")
@@ -72,10 +68,8 @@ def fetch_historical(city_name, latitude, longitude, start_date, end_date, varia
 
     return df
 
-
-# -------------------------------
 # Fetch Forecast Data
-# -------------------------------
+
 def fetch_forecast(city_name, latitude, longitude, variables):
     params = {
         "latitude": latitude,
@@ -100,58 +94,88 @@ def fetch_forecast(city_name, latitude, longitude, variables):
 
     return df
 
-
-# -------------------------------
 # Fetch Historical Data for All Cities
-# -------------------------------
-def fetch_all_cities(cities_config, start_date, end_date, variables):
+
+def fetch_all_cities(cities_config, start_date, end_date, variables, verbose=True):
     all_data = {}
+
+    if not verbose:
+        print(f"Fetching historical data for {len(cities_config)} cities...")
 
     for city in cities_config:
         name = city["name"]
 
-        print(f"Fetching historical data for {name}...")
+        if verbose:
+            print(f"Fetching historical data for {name}...")
 
-        df = fetch_historical(
-            city_name=name,
-            latitude=city["latitude"],
-            longitude=city["longitude"],
-            start_date=start_date,
-            end_date=end_date,
-            variables=variables,
-        )
+        try:
+            df = fetch_historical(
+                city_name=name,
+                latitude=city["latitude"],
+                longitude=city["longitude"],
+                start_date=start_date,
+                end_date=end_date,
+                variables=variables,
+            )
+        except Exception as exc:
+            raise RuntimeError(
+                f"Historical fetch failed for city '{name}': {exc}"
+            ) from exc
 
         all_data[name] = df
 
-        print(f"{name}: {len(df)} historical rows")
+        if verbose:
+            print(f"{name}: {len(df)} historical rows")
 
         time.sleep(2)
 
+    if not verbose:
+        total_rows = sum(len(df) for df in all_data.values())
+        print(
+            f"Historical fetch completed: "
+            f"{len(all_data)} cities, {total_rows} rows"
+        )
+
     return all_data
 
-
-# -------------------------------
 # Fetch Forecast Data for All Cities
-# -------------------------------
-def fetch_forecast_all_cities(cities_config, variables):
+
+def fetch_forecast_all_cities(cities_config, variables, verbose=True):
     all_forecasts = {}
+
+    if not verbose:
+        print(f"Fetching forecast data for {len(cities_config)} cities...")
 
     for city in cities_config:
         name = city["name"]
 
-        print(f"Fetching forecast data for {name}...")
+        if verbose:
+            print(f"Fetching forecast data for {name}...")
 
-        df = fetch_forecast(
-            city_name=name,
-            latitude=city["latitude"],
-            longitude=city["longitude"],
-            variables=variables,
-        )
+        try:
+            df = fetch_forecast(
+                city_name=name,
+                latitude=city["latitude"],
+                longitude=city["longitude"],
+                variables=variables,
+            )
+        except Exception as exc:
+            raise RuntimeError(
+                f"Forecast fetch failed for city '{name}': {exc}"
+            ) from exc
 
         all_forecasts[name] = df
 
-        print(f"{name}: {len(df)} forecast rows")
+        if verbose:
+            print(f"{name}: {len(df)} forecast rows")
 
         time.sleep(2)
+
+    if not verbose:
+        total_rows = sum(len(df) for df in all_forecasts.values())
+        print(
+            f"Forecast fetch completed: "
+            f"{len(all_forecasts)} cities, {total_rows} rows"
+        )
 
     return all_forecasts
