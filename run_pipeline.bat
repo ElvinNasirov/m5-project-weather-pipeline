@@ -1,4 +1,5 @@
 @echo off
+
 echo Running Weather Pipeline
 
 IF NOT EXIST ".venv\Scripts\activate.bat" (
@@ -10,7 +11,7 @@ IF NOT EXIST ".venv\Scripts\activate.bat" (
 
 call .venv\Scripts\activate.bat
 
-python src\pipeline.py
+python -m src.pipeline
 
 echo.
 echo Pipeline finished.

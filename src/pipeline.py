@@ -13,8 +13,11 @@ This pipeline:
 """
 
 # Imports
-
+import sys
 from pathlib import Path
+
+PROJECT_ROOT = Path.cwd().parent
+sys.path.append(str(PROJECT_ROOT))
 
 import numpy as np
 import pandas as pd
@@ -30,6 +33,7 @@ from src.config import (
     DATA_DIR,
     HISTORICAL_SUBDIR,
     FORECAST_SUBDIR,
+    FORECAST_DAYS,
 )
 
 from src.ingestion import (
@@ -88,6 +92,189 @@ def store_dataframe(
             SELECT * FROM temp_df_view;
         """)
 
+def run_raw_project_scope_gate() -> None:
+    """
+    Validate that raw data belongs to the project scope before cleaning.
+
+    This check protects the pipeline from corrupted, unrelated, or tampered data.
+    """
+    print("Running raw project-scope gate...")
+
+    historical_df = run_query("SELECT * FROM raw.historical").copy()
+    forecast_df = run_query("SELECT * FROM raw.forecast").copy()
+
+    expected_cities = {city["name"] for city in CITIES}
+    required_columns = set(["time", "city"] + DAILY_VARIABLES)
+
+    historical_start = pd.to_datetime(START_DATE)
+    historical_end = pd.to_datetime(END_DATE)
+
+    expected_forecast_start = historical_end + pd.Timedelta(days=1)
+    expected_forecast_end = expected_forecast_start + pd.Timedelta(
+        days=FORECAST_DAYS - 1
+    )
+
+    checks = []
+
+    def add_check(name, status, details):
+        checks.append({
+            "check": name,
+            "status": status,
+            "details": details,
+        })
+
+    # Required columns
+    historical_missing_cols = sorted(required_columns - set(historical_df.columns))
+    forecast_missing_cols = sorted(required_columns - set(forecast_df.columns))
+
+    add_check(
+        "historical_required_columns",
+        "PASS" if not historical_missing_cols else "FAIL",
+        historical_missing_cols if historical_missing_cols else "all required columns present",
+    )
+
+    add_check(
+        "forecast_required_columns",
+        "PASS" if not forecast_missing_cols else "FAIL",
+        forecast_missing_cols if forecast_missing_cols else "all required columns present",
+    )
+
+    # Stop early if required columns are missing
+    if historical_missing_cols or forecast_missing_cols:
+        failed = [check for check in checks if check["status"] != "PASS"]
+        for check in checks:
+            print(f"- {check['check']}: {check['status']}")
+        raise ValueError(f"Raw project-scope gate failed: {failed}")
+
+    historical_df["time"] = pd.to_datetime(historical_df["time"], errors="coerce")
+    forecast_df["time"] = pd.to_datetime(forecast_df["time"], errors="coerce")
+
+    # Date parse validity
+    add_check(
+        "historical_date_parse",
+        "PASS" if historical_df["time"].notna().all() else "FAIL",
+        "all dates parsed" if historical_df["time"].notna().all() else "invalid historical dates found",
+    )
+
+    add_check(
+        "forecast_date_parse",
+        "PASS" if forecast_df["time"].notna().all() else "FAIL",
+        "all dates parsed" if forecast_df["time"].notna().all() else "invalid forecast dates found",
+    )
+
+    # City scope
+    historical_cities = set(historical_df["city"].unique())
+    forecast_cities = set(forecast_df["city"].unique())
+
+    add_check(
+        "historical_city_scope",
+        "PASS" if historical_cities == expected_cities else "FAIL",
+        {
+            "expected": sorted(expected_cities),
+            "actual": sorted(historical_cities),
+        },
+    )
+
+    add_check(
+        "forecast_city_scope",
+        "PASS" if forecast_cities == expected_cities else "FAIL",
+        {
+            "expected": sorted(expected_cities),
+            "actual": sorted(forecast_cities),
+        },
+    )
+
+    # Historical date range
+    actual_hist_min = historical_df["time"].min()
+    actual_hist_max = historical_df["time"].max()
+
+    add_check(
+        "historical_date_range",
+        "PASS"
+        if actual_hist_min == historical_start and actual_hist_max == historical_end
+        else "FAIL",
+        {
+            "expected": f"{historical_start.date()} → {historical_end.date()}",
+            "actual": f"{actual_hist_min.date()} → {actual_hist_max.date()}",
+        },
+    )
+
+    # Forecast date range
+    actual_forecast_min = forecast_df["time"].min()
+    actual_forecast_max = forecast_df["time"].max()
+
+    add_check(
+        "forecast_date_range",
+        "PASS"
+        if actual_forecast_min == expected_forecast_start
+        and actual_forecast_max == expected_forecast_end
+        else "FAIL",
+        {
+            "expected": f"{expected_forecast_start.date()} → {expected_forecast_end.date()}",
+            "actual": f"{actual_forecast_min.date()} → {actual_forecast_max.date()}",
+        },
+    )
+
+    # Row count per city
+    expected_historical_rows = (
+        historical_end - historical_start
+    ).days + 1
+
+    historical_counts = historical_df.groupby("city").size().to_dict()
+    forecast_counts = forecast_df.groupby("city").size().to_dict()
+
+    historical_count_ok = all(
+        historical_counts.get(city, 0) == expected_historical_rows
+        for city in expected_cities
+    )
+
+    forecast_count_ok = all(
+        forecast_counts.get(city, 0) == FORECAST_DAYS
+        for city in expected_cities
+    )
+
+    add_check(
+        "historical_rows_per_city",
+        "PASS" if historical_count_ok else "FAIL",
+        {
+            "expected_per_city": expected_historical_rows,
+            "actual": historical_counts,
+        },
+    )
+
+    add_check(
+        "forecast_rows_per_city",
+        "PASS" if forecast_count_ok else "FAIL",
+        {
+            "expected_per_city": FORECAST_DAYS,
+            "actual": forecast_counts,
+        },
+    )
+
+    print("Raw project-scope checks:")
+    for check in checks:
+        print(f"- {check['check']}: {check['status']}")
+
+    failed_checks = [
+        check for check in checks
+        if check["status"] != "PASS"
+    ]
+
+    if failed_checks:
+        messages = []
+
+        for check in failed_checks:
+            messages.append(
+                f"{check['check']} — {check['status']}\n"
+                f"Details: {check['details']}"
+            )
+
+        raise ValueError(
+            "Raw project-scope gate failed:\n\n" + "\n\n".join(messages)
+        )
+
+    print("Raw project-scope gate passed.")
+
 def run_clean_data_quality_gate(clean_df: pd.DataFrame) -> None:
     """
     Run quality checks after cleaning and before feature engineering.
@@ -111,6 +298,10 @@ def run_clean_data_quality_gate(clean_df: pd.DataFrame) -> None:
         check for check in checks
         if check["status"] in ["WARN", "FAIL"]
     ]
+
+    print("Quality checks:")
+    for check in checks:
+        print(f"- {check['check']}: {check['status']}")
 
     if failed_checks:
         messages = []
@@ -156,13 +347,16 @@ def save_city_frames_to_parquet(
     """
     output_dir.mkdir(parents=True, exist_ok=True)
 
+    saved_files = []
+
     for city_name, df in data_by_city.items():
         safe_city = city_name.lower().replace(" ", "_")
         file_path = output_dir / f"{safe_city}_{suffix}.parquet"
 
         df.to_parquet(file_path, index=False)
+        saved_files.append(file_path)
 
-        print(f"Saved: {file_path}")
+    print(f"Saved {len(saved_files)} parquet files to {output_dir}")
 
 def refresh_raw_data() -> None:
     """
@@ -182,10 +376,11 @@ def refresh_raw_data() -> None:
     clear_raw_parquet_files()
 
     historical_data = fetch_all_cities(
-        cities_config=CITIES,
-        start_date=START_DATE,
-        end_date=END_DATE,
-        variables=DAILY_VARIABLES,
+    cities_config=CITIES,
+    start_date=START_DATE,
+    end_date=END_DATE,
+    variables=DAILY_VARIABLES,
+    verbose=False,
     )
 
     save_city_frames_to_parquet(
@@ -195,8 +390,9 @@ def refresh_raw_data() -> None:
     )
 
     forecast_data = fetch_forecast_all_cities(
-        cities_config=CITIES,
-        variables=DAILY_VARIABLES,
+    cities_config=CITIES,
+    variables=DAILY_VARIABLES,
+    verbose=False,
     )
 
     save_city_frames_to_parquet(
@@ -487,25 +683,28 @@ def run_pipeline(refresh_data: bool = True) -> dict[str, pd.DataFrame]:
     dict
         Dictionary with model_features and final_28d_forecast DataFrames.
     """
-    print("Step 1/6 — Creating schemas...")
+    print("Step 1/7 — Creating schemas...")
     create_schemas()
 
     if refresh_data:
-        print("Step 2/6 — Refreshing raw API data...")
+        print("Step 2/7 — Refreshing raw API data...")
         refresh_raw_data()
     else:
-        print("Step 2/6 — Reusing existing raw parquet files...")
+        print("Step 2/7 — Reusing existing raw parquet files...")
 
-    print("Step 3/6 — Loading raw parquet files into DuckDB...")
+    print("Step 3/7 — Loading raw parquet files into DuckDB...")
     load_raw_data()
 
-    print("Step 4/6 — Cleaning data, running quality checks, and building model features...")
+    print("Step 4/7 — Validating raw data project scope...")
+    run_raw_project_scope_gate()
+
+    print("Step 5/7 — Cleaning data, running quality checks, and building model features...")
     feature_df = prepare_model_features()
 
-    print("Step 5/6 — Training model and building final 28-day forecast...")
+    print("Step 6/7 — Training model and building final 28-day forecast...")
     final_forecast = build_final_28d_forecast(feature_df)
 
-    print("Step 6/6 — Pipeline completed.")
+    print("Step 7/7 — Pipeline completed.")
     print(f"Model feature rows: {len(feature_df)}")
     print(f"Final forecast rows: {len(final_forecast)}")
 
