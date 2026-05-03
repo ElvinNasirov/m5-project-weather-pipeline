@@ -1,0 +1,24 @@
+# requirements-web.txt
+# Production dependencies only — excludes notebook/visualization tools
+# Used by Render (see render.yaml)
+
+# Web framework
+fastapi
+uvicorn[standard]
+
+# Database
+duckdb
+
+# HTTP requests (Open-Meteo API calls)
+requests
+
+# Data processing
+pandas
+numpy
+pyarrow
+
+# Machine learning
+scikit-learn
+
+# Date utilities
+python-dateutil

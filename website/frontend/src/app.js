@@ -26,7 +26,7 @@ document.addEventListener('DOMContentLoaded', () => {
         resultsSection.classList.add('hidden');
 
         try {
-            const response = await fetch('http://127.0.0.1:8000/forecast', {
+            const response = await fetch('/forecast', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ location, date }),
@@ -52,7 +52,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
         } catch (error) {
             console.error('Error:', error);
-            alert(`Failed to get forecast: ${error.message}\n\nMake sure the backend is running on http://127.0.0.1:8000`);
+            alert(`Failed to get forecast: ${error.message}`);
         } finally {
             btnText.classList.remove('hidden');
             spinner.classList.add('hidden');
