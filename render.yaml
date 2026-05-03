@@ -1,0 +1,23 @@
+# render.yaml — Render Blueprint (must be at repo root)
+# Deploys ClimaFit AI as a single Web Service (FastAPI serves both API + frontend)
+
+services:
+  - type: web
+    name: climafit-ai
+    env: python
+    region: frankfurt          # closest to Azerbaijan; change to oregon/ohio if preferred
+    plan: free                  # free tier — upgrade to starter for persistent disk
+
+    # Build: install dependencies from the lean web-only requirements file
+    buildCommand: pip install -r requirements-web.txt
+
+    # Start: run uvicorn from the backend directory
+    # $PORT is injected by Render automatically
+    startCommand: cd website/backend && uvicorn main:app --host 0.0.0.0 --port $PORT
+
+    # Health-check path — Render uses this to decide if the service is up
+    healthCheckPath: /pipeline/status
+
+    envVars:
+      - key: PYTHON_VERSION
+        value: "3.11.0"
